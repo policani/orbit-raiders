@@ -46,40 +46,44 @@ function toggleFull(){ if(!document.fullscreenElement){
 document.getElementById('fs').onclick=()=>{ toggleFull(); Audio.resume(); };
 
 // ===========================================================================
-// AUDIO — driving techno: four-on-the-floor kick, claps, offbeat hats,
-// rolling acid bass, filtered arp. All synthesized (royalty-free).
+// AUDIO — "Solar Tour": Gyruss-style drive (Bach Toccata-in-Dm energy).
+// Relentless cascading 16th arpeggio + church-organ pad + driving 8th bass +
+// four-on-the-floor/backbeat kit + heroic lead. D minor, 138 BPM, 32-bar
+// (~55s) loop that climaxes in its second half. Midrange kept open for SFX.
 // ===========================================================================
 const Audio=(()=>{
-  // -------------------------------------------------------------------------
-  // SOUNDTRACK: "Solar Tour" — Gyruss-style circular drive x Zelda heroic lead.
-  // Key D minor, 134 BPM, ~35.8s seamless 20-bar loop (4-bar intro + A + A').
-  // Lead = bright square+saw motif; bass = punchy octave/5th; chords sparse;
-  // perc clean 8-bit. Midrange kept open for SFX. See orbit-raiders-music.* for
-  // the standalone MIDI sketch + mixing notes.
-  // -------------------------------------------------------------------------
   let ac=null,master=null,musicGain=null,sfxGain=null;
   let muted=false,started=false,step=0,nextT=0,timer=null,danger=false;
-  const BPM=134, stepDur=15/BPM, BAR=16, LOOPB=20, LOOPS=BAR*LOOPB;
+  const BPM=138, stepDur=15/BPM, BAR=16, LOOPB=32, LOOPS=BAR*LOOPB;
 
   const NOTE={C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
   function nf(n){ const m=/^([A-G][b#]?)(-?\d)$/.exec(n); return 440*Math.pow(2,(((+m[2]+1)*12+NOTE[m[1]])-69)/12); }
-  const F_BASS=nf('D2'), F_CH=nf('D3'), F_LEAD=nf('D4');   // reference pitches
+  const F_BASS=nf('D2'), F_ORG=nf('D3'), F_ARP=nf('D3'), F_LEAD=nf('D4');
   // chords: r = root semitones from D, t = triad offsets
   const CH={ Dm:{r:0,t:[0,3,7]}, Bb:{r:-4,t:[0,4,7]}, C:{r:-2,t:[0,4,7]},
              F:{r:3,t:[0,4,7]}, Gm:{r:5,t:[0,3,7]}, A:{r:7,t:[0,4,7]} };
-  const PROG=['Dm','Dm','Gm','A', 'Dm','Bb','C','Dm','F','C','Gm','A', 'Dm','Bb','C','Dm','F','C','Gm','A'];
-  // lead motif as [stepInLoop, semitonesFromD, durSteps]
+  // dramatic 16-bar D-minor cycle (major accents Bb/C/F, A-dominant turnarounds)
+  const P16=['Dm','Dm','Gm','A','Dm','Bb','C','A','Dm','Gm','Bb','C','F','Gm','A','A'];
+  const PROG=P16.concat(P16);              // 32 bars
+  const ARPPAT=[0,1,2,3,4,5,4,3,2,1,3,4,5,4,2,1];   // cascading up/down per bar
+  // heroic lead motif over the 16-bar cycle: [stepInCycle, semitonesFromD, durSteps]
   const MEL=[
-    [8,7,4],[12,12,4], [16,15,4],[20,14,4],[24,12,8], [32,8,4],[36,12,4],[40,8,8],
-    [48,7,4],[52,13,4],[56,14,8],
-    [64,7,4],[68,12,4],[72,15,4],[76,14,4], [80,12,6],[86,10,2],[88,7,8],
-    [96,5,4],[100,10,4],[104,14,4],[108,12,4], [112,12,8],[120,7,4],[124,3,4],
-    [128,15,4],[132,10,4],[136,7,4],[140,15,4], [144,14,6],[150,10,2],[152,5,8],
-    [160,8,4],[164,12,4],[168,8,4],[172,5,4], [176,13,4],[180,14,4],[184,7,4],[188,13,4],
-    [192,7,4],[196,12,4],[200,15,4],[204,14,4], [208,12,6],[214,10,2],[216,7,8],
-    [224,5,4],[228,10,4],[232,14,4],[236,12,4], [240,12,8],[248,7,4],[252,3,4],
-    [256,15,4],[260,10,4],[264,7,4],[268,15,4], [272,14,6],[278,10,2],[280,5,8],
-    [288,8,4],[292,12,4],[296,8,4],[300,5,4], [304,13,4],[308,14,4],[312,7,4],[316,13,4]
+    [0,7,2],[2,5,2],[4,7,4],[8,12,4],[12,10,4],
+    [16,8,4],[20,7,4],[24,5,8],
+    [32,10,4],[36,8,4],[40,7,8],
+    [48,14,4],[52,13,4],[56,7,8],
+    [64,12,2],[66,10,2],[68,12,4],[72,15,4],[76,14,4],
+    [80,15,6],[86,14,2],[88,10,8],
+    [96,12,4],[100,14,4],[104,15,4],[108,14,4],
+    [112,13,8],[120,14,4],[124,7,4],
+    [128,7,2],[130,5,2],[132,7,4],[136,12,4],[140,10,4],
+    [144,8,4],[148,7,4],[152,5,8],
+    [160,10,4],[164,8,4],[168,7,8],
+    [176,12,4],[180,10,4],[184,12,4],[188,15,4],
+    [192,15,4],[196,12,4],[200,10,4],[204,15,4],
+    [208,14,6],[214,12,2],[216,8,8],
+    [224,7,4],[228,13,4],[232,14,4],[236,13,4],
+    [240,14,8],[248,13,4],[252,7,4]
   ];
   const MELAT={}; for(const e of MEL) MELAT[e[0]]=e;
 
@@ -87,7 +91,7 @@ const Audio=(()=>{
     if(ac)return;
     ac=new (window.AudioContext||window.webkitAudioContext)();
     master=ac.createGain(); master.gain.value=0.9; master.connect(ac.destination);
-    musicGain=ac.createGain(); musicGain.gain.value=0.32; musicGain.connect(master);
+    musicGain=ac.createGain(); musicGain.gain.value=0.30; musicGain.connect(master);
     sfxGain=ac.createGain(); sfxGain.gain.value=0.55; sfxGain.connect(master);
   }
   function noise(t,dur,g,hp,dest){ const n=ac.createBufferSource();
@@ -101,52 +105,62 @@ const Audio=(()=>{
     o.type='sine'; o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(46,t+0.10);
     g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.20);
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+0.22); noise(t,0.01,0.4,2600,musicGain); }
-  function snare(t){ noise(t,0.12,0.30,1800,musicGain);
+  function snare(t){ noise(t,0.13,0.32,1700,musicGain);
     const o=ac.createOscillator(),g=ac.createGain(); o.type='triangle'; o.frequency.value=185;
-    g.gain.setValueAtTime(0.20,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+    g.gain.setValueAtTime(0.22,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+0.14); }
-  function hat(t,g){ noise(t,0.03,g||0.06,9500,musicGain); }
+  function hat(t,g){ noise(t,0.03,g||0.05,9500,musicGain); }
   function tom(t,f){ const o=ac.createOscillator(),g=ac.createGain(); o.type='sine';
     o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*0.5,t+0.16);
     g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+0.2); }
+  function crash(t){ noise(t,0.7,0.20,4000,musicGain); noise(t,1.0,0.10,7500,musicGain); }
   function bass(off,t,dur){ const o=ac.createOscillator(),o2=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
     o.type='square'; o2.type='sawtooth'; const fq=F_BASS*Math.pow(2,off/12); o.frequency.value=fq; o2.frequency.value=fq;
-    f.type='lowpass'; f.frequency.value=620; f.Q.value=3;
-    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.42,t+0.008); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-    o.connect(f); o2.connect(f); f.connect(g); g.connect(musicGain); o.start(t); o2.start(t); o.stop(t+dur+0.05); o2.stop(t+dur+0.05); }
-  function chord(c,t){ c.t.forEach(off=>{ const o=ac.createOscillator(),g=ac.createGain();
-    o.type='triangle'; o.frequency.value=F_CH*Math.pow(2,(c.r+off)/12);
-    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.05,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+0.28);
-    o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+0.3); }); }
-  function lead(semi,t,dur){ const f=ac.createBiquadFilter(),g=ac.createGain();
-    f.type='lowpass'; f.frequency.value=3200; f.Q.value=1;
+    f.type='lowpass'; f.frequency.value=560; f.Q.value=3;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.36,t+0.008); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(musicGain); o.start(t); o2.start(t); o.stop(t+dur+0.04); o2.stop(t+dur+0.04); }
+  function arp(semi,t,gv){ const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
+    o.type='square'; o.frequency.value=F_ARP*Math.pow(2,semi/12);
+    f.type='lowpass'; f.frequency.value=3600; f.Q.value=1;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(gv||0.078,t+0.004); g.gain.exponentialRampToValueAtTime(0.001,t+stepDur*0.9);
+    o.connect(f); f.connect(g); g.connect(musicGain); o.start(t); o.stop(t+stepDur); }
+  function organ(c,t,dur){ [0,7].forEach(off=>{ const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();
+    o.type='sawtooth'; o.frequency.value=F_ORG*Math.pow(2,(c.r+off)/12);
+    f.type='lowpass'; f.frequency.value=1300;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.038,t+0.05);
+    g.gain.setValueAtTime(0.038,t+dur*0.7); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(f); f.connect(g); g.connect(musicGain); o.start(t); o.stop(t+dur+0.05); }); }
+  function lead(semi,t,dur,gv){ gv=gv||0.16; const f=ac.createBiquadFilter(),g=ac.createGain();
+    f.type='lowpass'; f.frequency.value=3400; f.Q.value=1;
     const fq=F_LEAD*Math.pow(2,semi/12);
     const o=ac.createOscillator(); o.type='square'; o.frequency.value=fq;
-    const o2=ac.createOscillator(); o2.type='sawtooth'; o2.frequency.value=fq*1.003;
-    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.16,t+0.006);
-    g.gain.setValueAtTime(0.16,t+Math.max(0.02,dur*0.6)); g.gain.exponentialRampToValueAtTime(0.001,t+dur+0.04);
+    const o2=ac.createOscillator(); o2.type='sawtooth'; o2.frequency.value=fq*1.004;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(gv,t+0.006);
+    g.gain.setValueAtTime(gv,t+Math.max(0.03,dur*0.6)); g.gain.exponentialRampToValueAtTime(0.001,t+dur+0.05);
     o.connect(f); o2.connect(f); f.connect(g); g.connect(musicGain);
-    o.start(t); o2.start(t); o.stop(t+dur+0.06); o2.stop(t+dur+0.06); }
+    o.start(t); o2.start(t); o.stop(t+dur+0.07); o2.stop(t+dur+0.07); }
 
   function sched(){
-    const t=nextT, gs=step%LOOPS, b=gs%BAR, bar=(gs/BAR)|0, c=CH[PROG[bar]], intro=bar<4;
-    // percussion
-    if(b===0||b===8) kick(t);
-    if(danger && (b===4||b===12)) kick(t);
-    if(!intro && (b===4||b===12)) snare(t);
-    if(b%2===0) hat(t,intro?0.045:0.065);
-    if(danger && b%2===1) hat(t,0.05);
-    if(!intro && b===14 && (bar%4===3)){ tom(t,160); tom(t+stepDur*2,130); }
+    const t=nextT, gs=step%LOOPS, b=gs%BAR, bar=(gs/BAR)|0, c=CH[PROG[bar]], half=bar>=16;
+    // drums — four-on-the-floor with backbeat
+    if(b%4===0) kick(t);
+    if(b===4||b===12) snare(t);
+    if(b%2===0) hat(t,0.05);
+    if(danger && b%2===1) hat(t,0.04);
+    if(b===0 && bar%16===0) crash(t);
+    if(bar%8===7 && b===14) tom(t,150);
     if(danger && (b===6||b===14)) tom(t,120);
-    // bass — octave / fifth pulse
-    const bp=[0,7,12,7];
-    if(b%4===0){ const i=b/4; if(!intro || i===0 || i===2) bass(c.r+bp[i], t, stepDur*1.6); }
-    // chords — sparse
-    if(b===0||b===8) chord(c,t);
-    if(danger && b===4) chord(c,t);
-    // lead motif
-    const e=MELAT[gs]; if(e) lead(e[1], t, e[2]*stepDur);
+    // driving 8th bass with octave bounce
+    if(b%2===0){ const oct=((b/2)%2===0)?0:12; bass(c.r+oct, t, stepDur*1.0); }
+    // continuous cascading arpeggio — the Gyruss/toccata engine
+    const tones=[c.r, c.r+c.t[1], c.r+c.t[2], c.r+12, c.r+12+c.t[1], c.r+12+c.t[2]];
+    arp(tones[ARPPAT[b]], t);
+    if(danger) arp(tones[ARPPAT[(b+8)%16]]+12, t+stepDur*0.5, 0.05);   // extra tense layer
+    // organ pad — sustained per bar
+    if(b===0) organ(c, t, stepDur*BAR);
+    // heroic lead (octave-doubled in the climax half)
+    const e=MELAT[gs%256]; if(e){ lead(e[1], t, e[2]*stepDur, 0.16); if(half) lead(e[1]+12, t, e[2]*stepDur, 0.06); }
     step++; nextT+=stepDur;
   }
   function run(){ if(!ac)return; while(nextT<ac.currentTime+0.12) sched(); timer=setTimeout(run,25); }
@@ -154,15 +168,14 @@ const Audio=(()=>{
   function stopMusic(){ started=false; clearTimeout(timer); }
   function setDanger(v){ danger=!!v; }
   function victory(){ if(!ac||muted)return; const t0=ac.currentTime;
-    // triumphant resolve into D major: Bb - C - A - D, with a rising D-major flourish
     const stabs=[['Bb',0],['C',0.22],['A',0.44],['Dmaj',0.7]];
     const CHV={Bb:{r:-4,t:[0,4,7]},C:{r:-2,t:[0,4,7]},A:{r:7,t:[0,4,7]},Dmaj:{r:0,t:[0,4,7,12]}};
-    stabs.forEach(([nm,dt])=> chord(CHV[nm], t0+dt));
-    [0,4,7,12,16].forEach((s,i)=>{ const o=ac.createOscillator(),g=ac.createGain();
+    stabs.forEach(([nm,dt])=> organ(CHV[nm], t0+dt, 0.5));
+    [0,4,7,12,16,19].forEach((s,i)=>{ const o=ac.createOscillator(),g=ac.createGain();
       o.type='square'; o.frequency.value=F_LEAD*Math.pow(2,s/12);
-      g.gain.setValueAtTime(0.0001,t0+0.7+i*0.1); g.gain.linearRampToValueAtTime(0.18,t0+0.7+i*0.1+0.02);
-      g.gain.exponentialRampToValueAtTime(0.001,t0+0.7+i*0.1+0.22);
-      o.connect(g); g.connect(musicGain); o.start(t0+0.7+i*0.1); o.stop(t0+0.7+i*0.1+0.24); }); }
+      g.gain.setValueAtTime(0.0001,t0+0.7+i*0.09); g.gain.linearRampToValueAtTime(0.18,t0+0.7+i*0.09+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t0+0.7+i*0.09+0.22);
+      o.connect(g); g.connect(musicGain); o.start(t0+0.7+i*0.09); o.stop(t0+0.7+i*0.09+0.24); }); }
 
   // SFX
   function laser(){ if(!ac||muted)return; const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
@@ -417,6 +430,7 @@ function muzzles(){ const [px,py]=posAt(player.angle,R_PLAYER); const dir=angTo(
   if(player.dual){ const p=dir+Math.PI/2;
     return {dir, pts:[[px+Math.cos(p)*14,py+Math.sin(p)*14],[px-Math.cos(p)*14,py-Math.sin(p)*14]]}; }
   return {dir, pts:[[px,py]]}; }
+const LASER_REACH=R_PLAYER-PLANET_R-8;   // beam converges toward the planet, stops short of it
 
 function fire(){
   if(player.cool>0||player.captured||!player.alive) return;
@@ -427,24 +441,24 @@ function fire(){
       bullets.push({x:mx,y:my,dx:Math.cos(a)*sp,dy:Math.sin(a)*sp,life:90}); }
     Audio.laser();
   } else if(weaponType==='spray'){
-    player.cool=16; const n=weaponLevel+2, total=(Math.PI/180)*(7.5*weaponLevel), sp=7.5;  // 30° max at +4
+    player.cool=16; const n=(weaponLevel+2)*3, total=(Math.PI/180)*(9*weaponLevel), sp=7.5;  // 3x count, 20% wider
     for(const [mx,my] of pts) for(let i=0;i<n;i++){ const a=dir+(n>1?(i/(n-1)-0.5)*total:0);
       bullets.push({x:mx,y:my,dx:Math.cos(a)*sp,dy:Math.sin(a)*sp,life:80}); }
     Audio.laser();
   } else if(weaponType==='missile'){
-    player.cool=22; const n=weaponLevel;
-    for(const [mx,my] of pts) for(let i=0;i<n;i++){ const a=dir+(i-(n-1)/2)*0.18;
+    player.cool=22; const n=weaponLevel*3;                                       // 3x count
+    for(const [mx,my] of pts) for(let i=0;i<n;i++){ const a=dir+(i-(n-1)/2)*0.14;
       missiles.push({x:mx,y:my,dx:Math.cos(a)*5,dy:Math.sin(a)*5,life:150,wob:Math.random()*TAU,turn:0.06+0.012*weaponLevel}); }
     Audio.missile();
   }
 }
-// persistent laser beam — damage along the inward line while held
+// persistent laser beam — converges inward toward the planet (3x width)
 function fireLaser(){
   if(player.captured||!player.alive){ laserOn=false; return; }
   laserTick++; if(laserTick%14===0) Audio.beam();
-  const {dir,pts}=muzzles(); const halfW=4+weaponLevel*4;
-  if(laserTick%6!==0) return;                       // apply damage every 6 frames
-  for(const [mx,my] of pts){ const ex=mx+Math.cos(dir)*1000, ey=my+Math.sin(dir)*1000;
+  const {dir,pts}=muzzles(); const halfW=12+weaponLevel*12;        // 3x previous width
+  if(laserTick%6!==0) return;                                       // apply damage every 6 frames
+  for(const [mx,my] of pts){ const ex=mx+Math.cos(dir)*LASER_REACH, ey=my+Math.sin(dir)*LASER_REACH;
     const hitLine=(tx,ty,rad)=> distToSeg(tx,ty,mx,my,ex,ey) < rad+halfW;
     for(const e of enemies){ const [exx,eyy]=posAt(e.angle,e.r); if(hitLine(exx,eyy,TYPE[e.type].rad)){ e.hp-=weaponLevel; explode(exx,eyy,'#16f6ff',4); if(e.hp<=0) killEnemy(e,exx,eyy); } }
     for(let ci=0;ci<centipedes.length;ci++){ const cp=centipedes[ci];
@@ -493,9 +507,11 @@ function update(){
     e.t++; e.wobble+=0.05; const T=TYPE[e.type];
     if(e.state==='enter'){ e.r+=1.3; e.angle+=0.014; if(e.r>=e.orbitR){ e.r=e.orbitR; e.state='orbit'; } }
     else if(e.state==='orbit'){
-      e.angle+=(e.type==='captor'?0.004:0.008); e.r=e.orbitR+Math.sin(e.wobble)*9;
+      if(e.type==='captor') e.angle+=angDiff(player.angle,e.angle)*0.012;   // captor tracks the player
+      else e.angle+=0.008;
+      e.r=e.orbitR+Math.sin(e.wobble)*9;
       if(e.type!=='captor' && Math.random()<(0.0022+wave*0.0004)*T.dive){ e.state='dive'; e.diveT=0; }
-      if(e.type==='captor' && !capturedShip && !player.captured && Math.abs(angDiff(e.angle,player.angle))<0.22 && e.beam<=0 && Math.random()<0.02){ e.beam=160; Audio.capture(); }
+      if(e.type==='captor' && !capturedShip && !player.captured && Math.abs(angDiff(e.angle,player.angle))<0.25 && e.beam<=0 && Math.random()<0.05){ e.beam=160; Audio.capture(); }
       if(T.fire){ e.fireCd--; if(e.fireCd<=0){ enemyShoot(e); e.fireCd=100+Math.random()*110; } }
     } else if(e.state==='dive'){
       e.diveT++; e.angle+=angDiff(player.angle,e.angle)*0.02; e.r+=1.1+e.diveT*0.03;
@@ -597,10 +613,15 @@ function update(){
     if(!dead) for(const cp of centipedes){ for(const s of cp.segs){ if(hit(s.x,s.y,12)){ dead=true; break; } } if(dead) break; }
     if(!dead) for(const k of rocks){ if(hit(k.x,k.y,k.size)){ dead=true; break; } }
     if(!dead && boss && boss.enter<=0){
-      if(boss.kind==='serpent'){ for(const s of boss.segs){ if(hit(s.x,s.y,12)){ dead=true; break; } } }
-      else { const [bx,by]=bossPos(); if(hit(bx,by,46)) dead=true; }
-      if(!dead && boss.kind==='warden' && boss.beam>0){ const [bx,by]=bossPos();
-        const aToP=Math.atan2(py-by,px-bx); if(Math.abs(angDiff(aToP,boss.beamAng))<0.34 && Math.hypot(px-bx,py-by)<R_PLAYER+50) dead=true; }
+      const [bx,by]=bossPos();
+      if(boss.kind==='warden' && boss.beam>0){          // Warden tractor cone CAPTURES, not kills
+        const aToP=Math.atan2(py-by,px-bx);
+        if(Math.abs(angDiff(aToP,boss.beamAng))<0.34 && Math.hypot(px-bx,py-by)<R_PLAYER+50) bossCapture();
+      }
+      if(player.alive && !player.captured){
+        if(boss.kind==='serpent'){ for(const s of boss.segs){ if(hit(s.x,s.y,12)){ dead=true; break; } } }
+        else if(hit(bx,by,46)) dead=true;
+      }
     }
     if(dead) hitPlayer();
   }
@@ -643,6 +664,11 @@ function hitPlayer(){ if(player.invuln>0||!player.alive) return;
   const [px,py]=posAt(player.angle,R_PLAYER); explode(px,py,'#16f6ff',26); Audio.death(); shake=18; flash=0.7;
   if(player.dual){ player.dual=false; player.invuln=90; return; }
   lives--; player.alive=false; if(lives<=0) gameOver(); else capRespawn=70; }
+// Warden boss captures the player with its tractor cone (costs a life, like a captor)
+function bossCapture(){ if(player.invuln>0||!player.alive||player.captured) return;
+  const [px,py]=posAt(player.angle,R_PLAYER); explode(px,py,'#ff2e88',24); Audio.capture(); shake=14; flash=0.6;
+  if(player.dual){ player.dual=false; player.invuln=100; return; }
+  lives--; player.alive=false; if(lives<=0) gameOver(); else capRespawn=80; }
 function respawn(){ player.alive=true; player.captured=false; player.invuln=110; player.cool=0; }
 function gameOver(){ state=STATE.OVER; if(score>hi){ hi=score; newBest=true; } else newBest=false;
   try{ localStorage.setItem('orbitRaidersHi', hi); }catch(e){}
@@ -731,10 +757,10 @@ function drawCone(x,y,ang,t,half,reach){ const la=ang-half, ra=ang+half;
   ctx.closePath(); ctx.fill();
   ctx.globalAlpha=0.5+0.3*Math.sin(t*0.6); ctx.strokeStyle='#ffd0e6'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(CX+Math.cos(ang)*reach,CY+Math.sin(ang)*reach); ctx.stroke(); ctx.restore(); }
-function drawLaser(){ const {dir,pts}=muzzles(), halfW=4+weaponLevel*4;
-  for(const [mx,my] of pts){ const ex=mx+Math.cos(dir)*900, ey=my+Math.sin(dir)*900; ctx.save(); ctx.lineCap='round';
+function drawLaser(){ const {dir,pts}=muzzles(), halfW=12+weaponLevel*12;
+  for(const [mx,my] of pts){ const ex=mx+Math.cos(dir)*LASER_REACH, ey=my+Math.sin(dir)*LASER_REACH; ctx.save(); ctx.lineCap='round';
     const g=ctx.createLinearGradient(mx,my,ex,ey); g.addColorStop(0,'rgba(22,246,255,0.9)'); g.addColorStop(1,'rgba(22,246,255,0.04)');
-    ctx.strokeStyle=g; ctx.shadowColor='#16f6ff'; ctx.shadowBlur=16; ctx.lineWidth=halfW*2; ctx.globalAlpha=0.5;
+    ctx.strokeStyle=g; ctx.shadowColor='#16f6ff'; ctx.shadowBlur=16; ctx.lineWidth=halfW*2; ctx.globalAlpha=0.45;
     ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(ex,ey); ctx.stroke();
     ctx.strokeStyle='#eafdff'; ctx.shadowBlur=10; ctx.lineWidth=Math.max(2,halfW*0.6); ctx.globalAlpha=0.9;
     ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(ex,ey); ctx.stroke(); ctx.restore(); } }
